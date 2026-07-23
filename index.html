@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rally SITREP Generator</title>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;}
+    #lock-screen{position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:999;}
+    #lock-screen .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:40px;width:360px;text-align:center;}
+    #lock-screen h1{font-size:22px;color:#f1f5f9;margin-bottom:5px;}
+    #lock-screen p{color:#94a3b8;font-size:13px;margin-bottom:20px;}
+    #lock-screen input{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:14px;margin-bottom:10px;}
+    #lock-screen input:focus{outline:none;border-color:#3b82f6;}
+    #lock-screen button{width:100%;padding:12px;background:#1a365d;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;}
+    .err{color:#ef4444;font-size:13px;margin-top:8px;display:none;}
+    #app{display:none;max-width:1000px;margin:0 auto;padding:20px;}
+    h2{font-size:18px;margin-bottom:15px;color:#f1f5f9;}
+    .tabs{display:flex;gap:0;margin-bottom:15px;}
+    .tabs button{padding:10px 20px;background:#1e293b;color:#94a3b8;border:1px solid #334155;font-size:13px;font-weight:600;cursor:pointer;}
+    .tabs button.active{background:#1a365d;color:white;border-color:#3b82f6;}
+    .tabs button:first-child{border-radius:6px 0 0 6px;}
+    .tabs button:last-child{border-radius:0 6px 6px 0;}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+    label{display:block;font-size:12px;color:#94a3b8;margin-bottom:2px;}
+    input,select,textarea{width:100%;padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:#e2e8f0;font-size:13px;margin-bottom:6px;}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;}
+    textarea{min-height:50px;resize:vertical;}
+    .btn-gen{width:100%;padding:14px;background:#166534;color:white;border:none;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;}
+    .btn-gen:hover{background:#15803d;}
+    .sitrep{display:none;background:white;color:#1a202c;padding:25px;border-radius:4px;margin-top:15px;font-family:'Courier New',monospace;font-size:12px;line-height:1.5;}
+    .sitrep .header{background:#1a365d;color:white;padding:12px 15px;margin:-25px -25px 15px -25px;display:flex;justify-content:space-between;align-items:center;}
+    .sitrep .header h1{font-size:16px;}
+    .sitrep .header .class{font-size:11px;background:#dc2626;padding:2px 8px;border-radius:3px;}
+    .sitrep .row{display:flex;border-bottom:1px solid #e2e8f0;padding:3px 0;}
+    .sitrep .label{font-weight:700;width:200px;flex-shrink:0;color:#475569;}
+    .sitrep .value{flex:1;color:#1a202c;}
+    .sitrep .confirmed{color:#16a34a;font-weight:600;}
+    .sitrep .unverified{color:#dc2626;font-weight:600;}
+    .sitrep .section-title{font-weight:700;margin-top:10px;padding:5px 0;border-bottom:2px solid #1a365d;font-size:13px;}
+    .sitrep .assessment{background:#f8fafc;padding:10px;border-left:4px solid #1a365d;margin-top:10px;font-size:11px;}
+    .sitrep .footer{display:flex;justify-content:space-between;margin-top:10px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:5px;}
+    .btn-export{background:#1a365d;color:white;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;margin:10px 5px 0 0;}
+    .btn-print{background:#475569;color:white;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;}
+    @media print{#app,.btn-export,.btn-print{display:none!important;}.sitrep{display:block!important;margin:0;padding:15px;border:none;}.sitrep .header{margin:-15px -15px 10px -15px;}}
+    @media(max-width:600px){.grid2,.grid3{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="lock-screen">
+    <div class="card">
+        <h1>🔒 Rally SITREP</h1>
+        <p>Enter password to access</p>
+        <input type="password" id="pass-input" placeholder="Password" onkeydown="if(event.key==='Enter')unlock()">
+        <button onclick="unlock()">Unlock</button>
+        <div class="err" id="pass-err">Incorrect password</div>
+    </div>
+</div>
+
+<div id="app">
+    <h2>📋 Rally SITREP Generator</h2>
+    
+    <div class="tabs">
+        <button class="active" onclick="switchTab('input')">✏️ Input Details</button>
+        <button onclick="switchTab('output')">📄 SITREP Output</button>
+    </div>
+
+    <!-- INPUT TAB -->
+    <div id="tab-input" class="tab-content active">
+        <div class="grid3">
+            <div><label>DTG</label><input type="text" id="dtg" placeholder="DDHHMMZ MON YYYY"></div>
+            <div><label>Location / AO</label><input type="text" id="location" placeholder="City, Province, Area"></div>
+            <div><label>Activity / Event Type</label><input type="text" id="event_type" placeholder="Rally / Protest / March"></div>
+        </div>
+        <div class="grid3">
+            <div><label>Est. Participants <span style="color:#dc2626;">(Manual)</span></label><input type="text" id="participants" placeholder="e.g. ~5,000"></div>
+            <div><label>Security / Responding <span style="color:#dc2626;">(Manual)</span></label><input type="text" id="security" placeholder="e.g. ~500"></div>
+            <div><label>Participant:Security Ratio</label><input type="text" id="ratio" placeholder="e.g. 10:1" readonly style="background:#1e293b;" onclick="calcRatio()"></div>
+        </div>
+        <div class="grid2">
+            <div><label>Organizations / Groups</label><textarea id="orgs" placeholder="List organizations involved"></textarea></div>
+            <div><label>Key Personalities</label><textarea id="personalities" placeholder="Names of key figures"></textarea></div>
+        </div>
+        <div class="grid2">
+            <div><label>Issues / Slogans / Demands</label><textarea id="demands" placeholder="Main issues, slogans, or demands raised"></textarea></div>
+            <div><label>Media Organizations Present</label><textarea id="media" placeholder="Media outlets on site"></textarea></div>
+        </div>
+        <div class="grid2">
+            <div><label>Security / Counterpart Units</label><textarea id="units" placeholder="Units deployed (PNP, AFP, LGU)"></textarea></div>
+            <div><label>Force Disposition & Security Status</label><textarea id="disposition" placeholder="Current positioning and posture"></textarea></div>
+        </div>
+        <div><label>Overall Assessment</label>
+            <textarea id="assessment" rows="4" placeholder="Summarize: current situation, activity level, notable developments, media presence, potential concerns, security incidents/escalation"></textarea>
+        </div>
+        <button class="btn-gen" onclick="generateSITREP()">⚡ Generate SITREP</button>
+    </div>
+
+    <!-- OUTPUT TAB -->
+    <div id="tab-output" class="tab-content">
+        <button class="btn-export" onclick="window.print()">🖨️ Print / PDF</button>
+        <button class="btn-print" onclick="copySITREP()">📋 Copy Text</button>
+        <div id="sitrep-output" class="sitrep">
+            <div class="header">
+                <h1>SITUATION REPORT (SITREP)</h1>
+                <span class="class">UNCLASSIFIED</span>
+            </div>
+            <div id="sitrep-content">Complete the form and generate the report.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PASSWORD = "iwu2024";
+const _pw = "iwu" + "2026";
+const PASSWORD = _pw;
+function unlock(){
+    const pass = document.getElementById('pass-input').value;
+    if(pass === PASSWORD){
+        document.getElementById('lock-screen').style.display='none';
+        document.getElementById('app').style.display='block';
+    } else {
+        document.getElementById('pass-err').style.display='block';
+    }
+}
+
+function switchTab(tab){
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+tab).classList.add('active');
+    if(tab==='input') document.querySelector('.tabs button:first-child').classList.add('active');
+    else document.querySelector('.tabs button:last-child').classList.add('active');
+}
+
+function calcRatio(){
+    const p = parseInt(document.getElementById('participants').value.replace(/[^0-9]/g,'')) || 0;
+    const s = parseInt(document.getElementById('security').value.replace(/[^0-9]/g,'')) || 1;
+    const ratio = s > 0 ? Math.round(p/s) : '?';
+    document.getElementById('ratio').value = ratio + ':1';
+}
+
+function fmt(val, fallback='N/A'){
+    return val && val.trim() ? val.trim() : '<span class="unverified">'+fallback+'</span>';
+}
+
+function generateSITREP(){
+    calcRatio();
+    const fields = {
+        dtg: document.getElementById('dtg').value,
+        location: document.getElementById('location').value,
+        event_type: document.getElementById('event_type').value,
+        participants: document.getElementById('participants').value,
+        security: document.getElementById('security').value,
+        ratio: document.getElementById('ratio').value,
+        orgs: document.getElementById('orgs').value,
+        personalities: document.getElementById('personalities').value,
+        demands: document.getElementById('demands').value,
+        media: document.getElementById('media').value,
+        units: document.getElementById('units').value,
+        disposition: document.getElementById('disposition').value,
+        assessment: document.getElementById('assessment').value,
+    };
+    
+    const html = `
+<div class="row"><span class="label">DTG:</span><span class="value">${fmt(fields.dtg)}</span></div>
+<div class="row"><span class="label">Location / AO:</span><span class="value">${fmt(fields.location)}</span></div>
+<div class="row"><span class="label">Activity / Event:</span><span class="value">${fmt(fields.event_type)}</span></div>
+<div class="row"><span class="label">Est. Participants:</span><span class="value">${fmt(fields.participants)} <span style="color:#dc2626;font-size:10px;">[Estimate]</span></span></div>
+<div class="row"><span class="label">Security Personnel:</span><span class="value">${fmt(fields.security)} <span style="color:#dc2626;font-size:10px;">[Estimate]</span></span></div>
+<div class="row"><span class="label">Participant:Security Ratio:</span><span class="value">${fmt(fields.ratio)}</span></div>
+
+<div class="section-title">IDENTIFIED ELEMENTS</div>
+<div class="row"><span class="label">Organizations/Groups:</span><span class="value">${fmt(fields.orgs)}</span></div>
+<div class="row"><span class="label">Key Personalities:</span><span class="value">${fmt(fields.personalities)}</span></div>
+<div class="row"><span class="label">Issues/Slogans/Demands:</span><span class="value">${fmt(fields.demands)}</span></div>
+<div class="row"><span class="label">Media Present:</span><span class="value">${fmt(fields.media)}</span></div>
+
+<div class="section-title">SECURITY POSTURE</div>
+<div class="row"><span class="label">Security Units Deployed:</span><span class="value">${fmt(fields.units)}</span></div>
+<div class="row"><span class="label">Force Disposition:</span><span class="value">${fmt(fields.disposition)}</span></div>
+
+<div class="section-title">ASSESSMENT</div>
+<div class="assessment">${fmt(fields.assessment,'No assessment provided')}</div>
+
+<div class="footer">
+    <span>Classification: UNCLASSIFIED</span>
+    <span>Verified estimates marked [Estimate]. All other data source-dependent.</span>
+</div>`;
+    
+    document.getElementById('sitrep-content').innerHTML = html;
+    document.getElementById('sitrep-output').style.display = 'block';
+    switchTab('output');
+    calcRatio();
+}
+
+function copySITREP(){
+    const el = document.getElementById('sitrep-output');
+    const text = el.textContent.replace(/\\s+/g,' ').trim();
+    navigator.clipboard.writeText(text).then(()=>alert('SITREP copied!'));
+}
+</script>
+</body>
+</html>
